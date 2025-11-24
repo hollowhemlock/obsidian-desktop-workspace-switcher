@@ -1,47 +1,25 @@
-import type {
-  Editor,
-  MarkdownPostProcessorContext,
-  ObsidianProtocolData,
-  TAbstractFile
-} from 'obsidian';
-import type { ExtractPluginSettingsWrapper } from 'obsidian-dev-utils/obsidian/Plugin/PluginTypesBase';
-import type { MaybeReturn } from 'obsidian-dev-utils/Type';
-import type { ReadonlyDeep } from 'type-fest';
-
-import {
-  MarkdownView,
-  Notice
-} from 'obsidian';
-import { convertAsyncToSync } from 'obsidian-dev-utils/Async';
-import { getDebugger } from 'obsidian-dev-utils/Debug';
-import { alert } from 'obsidian-dev-utils/obsidian/Modals/Alert';
-import { confirm } from 'obsidian-dev-utils/obsidian/Modals/Confirm';
-import { prompt } from 'obsidian-dev-utils/obsidian/Modals/Prompt';
-import { selectItem } from 'obsidian-dev-utils/obsidian/Modals/SelectItem';
+import { Notice } from 'obsidian';
 import { PluginBase } from 'obsidian-dev-utils/obsidian/Plugin/PluginBase';
 
 import type { PluginTypes } from './PluginTypes.ts';
 
-import { sampleStateField } from './EditorExtensions/SampleStateField.ts';
-import { sampleViewPlugin } from './EditorExtensions/SampleViewPlugin.ts';
-import { SampleEditorSuggest } from './EditorSuggests/SampleEditorSuggest.ts';
-import { SampleModal } from './Modals/SampleModal.ts';
+import type { Desktop } from './DesktopManagers/WindowsDesktopManager.ts';
+import {
+  cleanupPersistentPwsh,
+  getVirtualDesktops,
+  switchToDesktop,
+} from './DesktopManagers/WindowsDesktopManager.ts';
 import { PluginSettingsManager } from './PluginSettingsManager.ts';
 import { PluginSettingsTab } from './PluginSettingsTab.ts';
-import {
-  SAMPLE_REACT_VIEW_TYPE,
-  SampleReactView
-} from './Views/SampleReactView.tsx';
-import {
-  SAMPLE_SVELTE_VIEW_TYPE,
-  SampleSvelteView
-} from './Views/SampleSvelteView.ts';
-import {
-  SAMPLE_VIEW_TYPE,
-  SampleView
-} from './Views/SampleView.ts';
+
+// Define the workspace plugin interface based on its actual structure
+interface WorkspacePluginInstance {
+  activeWorkspace: string;
+}
 
 export class Plugin extends PluginBase<PluginTypes> {
+  private previousWorkspace = '';
+
   protected override createSettingsManager(): PluginSettingsManager {
     return new PluginSettingsManager(this);
   }
@@ -52,230 +30,129 @@ export class Plugin extends PluginBase<PluginTypes> {
 
   protected override async onLayoutReady(): Promise<void> {
     await super.onLayoutReady();
-    new Notice('This is executed after all plugins are loaded');
-    await this.openView(SAMPLE_VIEW_TYPE);
-    await this.openView(SAMPLE_SVELTE_VIEW_TYPE);
-    await this.openView(SAMPLE_REACT_VIEW_TYPE);
+
+    // Initialize workspace tracking
+    const workspacePlugin = this.getWorkspacePlugin();
+    if (workspacePlugin) {
+      this.previousWorkspace = workspacePlugin.activeWorkspace;
+    }
   }
 
   protected override async onloadImpl(): Promise<void> {
     await super.onloadImpl();
-    this.addCommand({
-      callback: this.runSampleCommand.bind(this),
-      id: 'sample-command',
-      name: 'Sample command'
-    });
 
-    this.addCommand({
-      editorCallback: this.runSampleEditorCommand.bind(this),
-      id: 'sample-editor-command',
-      name: 'Sample editor command'
-    });
+    // Register layout-change event to sync workspaces with virtual desktops
+    this.registerEvent(
+      this.app.workspace.on('layout-change', this.handleLayoutChange.bind(this)),
+    );
 
-    this.addCommand({
-      checkCallback: this.runSampleCommandWithCheck.bind(this),
-      id: 'sample-command-with-check',
-      name: 'Sample command with check'
-    });
-
-    this.addRibbonIcon('dice', 'Sample ribbon icon', this.runSampleRibbonIconCommand.bind(this));
-
-    this.addStatusBarItem().setText('Sample status bar item');
-
-    this.registerDomEvent(document, 'dblclick', this.handleSampleDomEvent.bind(this));
-
-    this.registerEditorExtension([sampleViewPlugin, sampleStateField]);
-
-    this.registerEditorSuggest(new SampleEditorSuggest(this.app));
-
-    this.registerEvent(this.app.vault.on('create', this.handleSampleEvent.bind(this)));
-
-    this.registerExtensions(['sample-extension-1', 'sample-extension-2'], SAMPLE_VIEW_TYPE);
-
-    this.registerHoverLinkSource(SAMPLE_VIEW_TYPE, {
-      defaultMod: true,
-      display: this.manifest.name
-    });
-
-    const INTERVAL_IN_MILLISECONDS = 60_000;
-    this.registerInterval(window.setInterval(this.handleSampleIntervalTick.bind(this), INTERVAL_IN_MILLISECONDS));
-
-    this.registerMarkdownCodeBlockProcessor('sample-code-block-processor', this.handleSampleCodeBlockProcessor.bind(this));
-
-    this.registerMarkdownPostProcessor(this.handleSampleMarkdownPostProcessor.bind(this));
-
-    this.registerObsidianProtocolHandler('sample-action', this.handleSampleObsidianProtocolHandler.bind(this));
-
-    this.registerView(SAMPLE_VIEW_TYPE, (leaf) => new SampleView(leaf));
-    this.registerView(SAMPLE_SVELTE_VIEW_TYPE, (leaf) => new SampleSvelteView(leaf));
-    this.registerView(SAMPLE_REACT_VIEW_TYPE, (leaf) => new SampleReactView(leaf));
-
-    this.registerModalCommands();
-  }
-
-  protected override async onLoadSettings(
-    loadedSettings: ReadonlyDeep<ExtractPluginSettingsWrapper<PluginTypes>>,
-    isInitialLoad: boolean
-  ): Promise<void> {
-    await super.onLoadSettings(loadedSettings, isInitialLoad);
-    if (loadedSettings.settings.textSetting === 'bar') {
-      new Notice('Sample text setting is bar');
-    }
-  }
-
-  protected override async onSaveSettings(
-    newSettings: ReadonlyDeep<ExtractPluginSettingsWrapper<PluginTypes>>,
-    oldSettings: ReadonlyDeep<ExtractPluginSettingsWrapper<PluginTypes>>,
-    context: unknown
-  ): Promise<void> {
-    await super.onSaveSettings(newSettings, oldSettings, context);
-    if (newSettings.settings.textSetting === 'baz' && oldSettings.settings.textSetting === 'bar') {
-      new Notice('Sample text setting is changed from bar to baz');
-    }
+    console.info('[Desktop Workspace Switcher] Plugin loaded, layout-change listener registered');
   }
 
   protected override async onunloadImpl(): Promise<void> {
     await super.onunloadImpl();
-    new Notice('Sample plugin is being unloaded');
+
+    // Clean up the persistent PowerShell process
+    cleanupPersistentPwsh();
+    console.info('[Desktop Workspace Switcher] Plugin unloaded, PowerShell process cleaned up');
   }
 
-  private handleSampleCodeBlockProcessor(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
-    getDebugger('handleSampleCodeBlockProcessor')(source, el, ctx);
-    el.setText('Sample code block processor');
+  private getWorkspacePlugin(): undefined | WorkspacePluginInstance {
+    return this.app.internalPlugins.getPluginById('workspaces')?.instance as
+      | undefined
+      | WorkspacePluginInstance;
   }
 
-  private handleSampleDomEvent(evt: MouseEvent): void {
-    const tagName = evt.target instanceof HTMLElement ? evt.target.tagName : '';
-    new Notice(`Sample DOM event: ${tagName}`);
-  }
-
-  private handleSampleEvent(file: TAbstractFile): void {
-    if (!this.app.workspace.layoutReady) {
+  private handleLayoutChange(): void {
+    if (!this.settings.enabled) {
       return;
     }
 
-    new Notice(`Sample event: ${file.name}`);
-  }
+    (async (): Promise<void> => {
+      const eventStartTime = performance.now();
+      const workspacePlugin = this.getWorkspacePlugin();
 
-  private handleSampleIntervalTick(): void {
-    new Notice('Sample interval tick');
-  }
+      if (workspacePlugin === undefined) {
+        console.error('[Desktop Workspace Switcher] Workspace plugin not found or not enabled.');
+        return;
+      }
 
-  private handleSampleMarkdownPostProcessor(el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
-    getDebugger('handleSampleMarkdownPostProcessor')(el, ctx);
-    if (el.hasClass('el-h6')) {
-      el.setText('Sample markdown post processor');
-    }
-  }
+      const activeWorkspace = workspacePlugin.activeWorkspace;
 
-  private handleSampleObsidianProtocolHandler(params: ObsidianProtocolData): void {
-    new Notice(`Sample obsidian protocol handler: ${params.action}`);
-  }
+      // Get list of virtual desktops once (optimization: avoid multiple calls)
+      const virtualDesktops = await getVirtualDesktops();
+      const currentDesktop = virtualDesktops?.find((d) => d.visible) ?? null;
+      const fetchEndTime = performance.now();
+      console.log(
+        `[layout-change] Desktop fetch took ${(fetchEndTime - eventStartTime).toFixed(0)}ms`,
+      );
 
-  private async openView(viewType: string): Promise<void> {
-    await this.app.workspace.ensureSideLeaf(viewType, 'right');
-  }
+      const message = [
+        ' desktop-workspace-sync layout change detected',
+        `   previousWorkspace: ${this.previousWorkspace}`,
+        `   activeWorkspace:   ${activeWorkspace}`,
+        `   currentDesktop:    ${String(currentDesktop)}`,
+      ].join('\n');
 
-  private registerModalCommands(): void {
-    this.addCommand({
-      callback: this.showSampleModal.bind(this),
-      id: 'show-sample-modal',
-      name: 'Show Sample Modal'
-    });
+      if (currentDesktop === null) {
+        console.error(`No current desktop detected, aborting switch. ${message}`);
+        return;
+      }
 
-    this.addCommand({
-      callback: convertAsyncToSync(this.showAlert.bind(this)),
-      id: 'show-alert-modal',
-      name: 'Show Alert Modal'
-    });
+      if (virtualDesktops && activeWorkspace) {
+        const workspaceExists = virtualDesktops.some(
+          (desktop) => desktop.name === activeWorkspace,
+        );
 
-    this.addCommand({
-      callback: convertAsyncToSync(this.showConfirm.bind(this)),
-      id: 'show-confirm-modal',
-      name: 'Show Confirm Modal'
-    });
+        const firstDesktop = virtualDesktops[0];
+        const isOnFirstDesktop =
+          firstDesktop !== undefined && currentDesktop.name === firstDesktop.name;
 
-    this.addCommand({
-      callback: convertAsyncToSync(this.showPrompt.bind(this)),
-      id: 'show-prompt-modal',
-      name: 'Show Prompt Modal'
-    });
-
-    this.addCommand({
-      callback: convertAsyncToSync(this.showSelectItem.bind(this)),
-      id: 'show-select-item-modal',
-      name: 'Show Select Item Modal'
-    });
-  }
-
-  private runSampleCommand(): void {
-    new Notice('Sample command');
-  }
-
-  private runSampleCommandWithCheck(checking: boolean): boolean {
-    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!markdownView) {
-      return false;
-    }
-
-    if (!checking) {
-      new Notice('Sample command with check');
-    }
-
-    return true;
-  }
-
-  private runSampleEditorCommand(editor: Editor): void {
-    editor.replaceSelection('Sample Editor Command');
-  }
-
-  private runSampleRibbonIconCommand(): void {
-    new Notice('Sample ribbon icon command');
-  }
-
-  private async showAlert(): Promise<void> {
-    await alert({
-      app: this.app,
-      message: 'Sample alert message',
-      title: 'Sample alert title'
-    });
-  }
-
-  private async showConfirm(): Promise<void> {
-    const result = await confirm({
-      app: this.app,
-      message: 'Sample confirm message',
-      title: 'Sample confirm title'
-    });
-
-    new Notice(`Sample confirm result: ${String(result)}`);
-  }
-
-  private async showPrompt(): Promise<void> {
-    await prompt({
-      app: this.app,
-      defaultValue: 'Sample prompt default value',
-      placeholder: 'Sample prompt placeholder',
-      title: 'Sample prompt title',
-      valueValidator: (value): MaybeReturn<string> => {
-        const MIN_LENGTH = 30;
-        if (value.length < MIN_LENGTH) {
-          return `Value must be at least ${String(MIN_LENGTH)} characters long`;
+        // Only skip if workspace doesn't exist AND we're already on the first (default) desktop
+        if (!workspaceExists && isOnFirstDesktop) {
+          console.debug(
+            `Active workspace '${activeWorkspace}' not found and already on default desktop '${currentDesktop.name}', skipping switch`,
+          );
+          return;
         }
       }
-    });
-  }
 
-  private showSampleModal(): void {
-    new SampleModal(this.app).open();
-  }
+      if (activeWorkspace === currentDesktop.name) {
+        console.info(`workspace is already active on desktop, no switch needed.${message}`);
+      }
+      else {
+        console.info(`switching to desktop: ${activeWorkspace}${message}`);
+        this.previousWorkspace = activeWorkspace;
 
-  private async showSelectItem(): Promise<void> {
-    await selectItem({
-      app: this.app,
-      items: ['Item 1', 'Item 2', 'Item 3'],
-      itemTextFunc: (item) => item,
-      placeholder: 'Sample select item placeholder'
+        await switchToDesktop(
+          activeWorkspace,
+          null,
+          (success: Desktop) => {
+            console.info(`Switched to desktop: ${success.name}`);
+
+            if (!this.settings.showNotices) {
+              return;
+            }
+
+            // Only show notice if we actually switched to the requested workspace
+            if (success.name === activeWorkspace) {
+              new Notice(`Switched to desktop: ${activeWorkspace}`);
+            }
+            else {
+              new Notice(`Switched to desktop: ${success.name} (${activeWorkspace} not found)`);
+            }
+          },
+          (error: string) => {
+            console.error(`Failed to switch to desktop: ${activeWorkspace}. Error: ${error}`);
+            if (this.settings.showNotices) {
+              new Notice(`Failed to switch to desktop: ${activeWorkspace}. Error: ${error}`);
+            }
+          },
+          virtualDesktops, // Pass pre-fetched desktops to avoid redundant calls
+        );
+      }
+    })().catch((error) => {
+      console.error('[Desktop Workspace Switcher] Error in layout-change handler:', error);
     });
   }
 }

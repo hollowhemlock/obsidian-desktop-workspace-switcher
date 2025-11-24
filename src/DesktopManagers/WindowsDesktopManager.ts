@@ -1,6 +1,7 @@
+// eslint-disable-next-line import-x/no-nodejs-modules -- Required for spawning PowerShell process to control Windows virtual desktops
 import {
   ChildProcess,
-  spawn,
+  spawn
 } from 'child_process';
 
 // Cache for desktop list (500ms TTL to avoid excessive PowerShell spawns)
@@ -31,7 +32,7 @@ export class Desktop {
 // Cleanup persistent PowerShell process
 export function cleanupPersistentPwsh(): void {
   if (persistentPwsh) {
-    console.log('[PowerShell] Cleaning up persistent process...');
+    console.debug('[PowerShell] Cleaning up persistent process...');
     persistentPwsh.kill();
     persistentPwsh = null;
   }
@@ -54,17 +55,17 @@ export async function getCurrentDesktop(): Promise<Desktop | null> {
 }
 
 export async function getVirtualDesktops(
-  useCache = true,
+  useCache = true
 ): Promise<Desktop[] | undefined> {
   // Check cache if enabled
   if (
     useCache && desktopCache
     && Date.now() - desktopCache.timestamp < CACHE_TTL_MS
   ) {
-    console.log(
+    console.debug(
       `[getVirtualDesktops] Using cached desktops (age: ${
         String(Date.now() - desktopCache.timestamp)
-      }ms)`,
+      }ms)`
     );
     return desktopCache.desktops;
   }
@@ -72,13 +73,13 @@ export async function getVirtualDesktops(
   const startTime = performance.now();
   try {
     const stdout = await execViaPersistentPwsh(
-      'Get-DesktopList | ConvertTo-Json',
+      'Get-DesktopList | ConvertTo-Json'
     );
     const endTime = performance.now();
-    console.log(
+    console.debug(
       `[getVirtualDesktops] PowerShell command took ${
         (endTime - startTime).toFixed(0)
-      }ms`,
+      }ms`
     );
 
     interface RawDesktop {
@@ -93,17 +94,16 @@ export async function getVirtualDesktops(
     // Create Desktop instances
     const desktopData: Desktop[] = desktops.map(
       (desktop: RawDesktop) =>
-        new Desktop(desktop.Number, desktop.Name, desktop.Visible),
+        new Desktop(desktop.Number, desktop.Name, desktop.Visible)
     );
 
     // Update cache - using a separate variable to avoid race condition
     const newCache = { desktops: desktopData, timestamp: Date.now() };
-    // eslint-disable-next-line require-atomic-updates
+    // eslint-disable-next-line require-atomic-updates -- Cache update is intentionally non-atomic; race condition is acceptable for performance caching
     desktopCache = newCache;
 
     return desktopData;
-  }
-  catch (error) {
+  } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`Error executing PowerShell command: ${errorMsg}`);
     return undefined;
@@ -112,15 +112,15 @@ export async function getVirtualDesktops(
 
 export async function switchToDesktop(
   desktopOfName: string,
-  // eslint-disable-next-line default-param-last
+  // eslint-disable-next-line default-param-last -- Keeping parameter order for API compatibility with callbacks at the end
   desktopOfNameIfNotFound: null | string = null,
   onSuccess: (desktop: Desktop) => void,
   onFailure: (error: string) => void,
-  preloadedDesktops?: Desktop[],
+  preloadedDesktops?: Desktop[]
 ): Promise<void> {
   const totalStartTime = performance.now();
   console.debug(
-    `[switchToDesktop] Attempting to switch to desktop: ${desktopOfName}`,
+    `[switchToDesktop] Attempting to switch to desktop: ${desktopOfName}`
   );
 
   try {
@@ -135,15 +135,15 @@ export async function switchToDesktop(
     let targetDesktop = desktops.find((d) => d.name === desktopOfName);
 
     if (!targetDesktop && desktopOfNameIfNotFound) {
-      console.log(
-        `Desktop '${desktopOfName}' not found, trying fallback '${desktopOfNameIfNotFound}'`,
+      console.debug(
+        `Desktop '${desktopOfName}' not found, trying fallback '${desktopOfNameIfNotFound}'`
       );
       targetDesktop = desktops.find((d) => d.name === desktopOfNameIfNotFound);
     }
 
     if (!targetDesktop) {
-      console.log(
-        'Neither primary nor fallback desktop found, switching to first available desktop',
+      console.debug(
+        'Neither primary nor fallback desktop found, switching to first available desktop'
       );
       const firstDesktop = desktops[0];
       if (!firstDesktop) {
@@ -154,25 +154,24 @@ export async function switchToDesktop(
     }
 
     const finalTarget = targetDesktop;
-    console.log(
-      `[switchToDesktop] Switching to desktop: ${finalTarget.name}`,
+    console.debug(
+      `[switchToDesktop] Switching to desktop: ${finalTarget.name}`
     );
 
     const switchStartTime = performance.now();
     try {
       await execViaPersistentPwsh(`Switch-Desktop '${finalTarget.name}'`);
       const switchEndTime = performance.now();
-      console.log(
+      console.debug(
         `[switchToDesktop] Switch command took ${
           (switchEndTime - switchStartTime).toFixed(0)
-        }ms`,
+        }ms`
       );
-    }
-    catch (error) {
+    } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`Switch error: ${errorMsg}`);
       onFailure(
-        `Failed to switch to desktop '${finalTarget.name}': ${errorMsg}`,
+        `Failed to switch to desktop '${finalTarget.name}': ${errorMsg}`
       );
       return;
     }
@@ -181,16 +180,15 @@ export async function switchToDesktop(
     desktopCache = null;
 
     const totalEndTime = performance.now();
-    console.log(
+    console.debug(
       `[switchToDesktop] Total operation took ${
         (totalEndTime - totalStartTime).toFixed(0)
-      }ms`,
+      }ms`
     );
 
     // Switch was successful, return the target desktop (optimization: avoid extra fetch)
     onSuccess(finalTarget);
-  }
-  catch (error) {
+  } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`Error switching to desktop '${desktopOfName}': ${errorMsg}`);
     onFailure(`Error switching to desktop '${desktopOfName}': ${errorMsg}`);
@@ -238,8 +236,7 @@ async function execViaPersistentPwsh(command: string): Promise<string> {
       cleanup();
       if (errorOutput) {
         reject(new Error(errorOutput));
-      }
-      else {
+      } else {
         reject(new Error('PowerShell process closed unexpectedly'));
       }
     }
@@ -264,12 +261,12 @@ function initPersistentPwsh(): void {
     return;
   }
 
-  console.log('[PowerShell] Starting persistent PowerShell process...');
+  console.debug('[PowerShell] Starting persistent PowerShell process...');
   const startTime = performance.now();
 
   persistentPwsh = spawn('pwsh', ['-NoProfile', '-NoLogo', '-Command', '-'], {
     shell: false,
-    stdio: ['pipe', 'pipe', 'pipe'],
+    stdio: ['pipe', 'pipe', 'pipe']
   });
 
   persistentPwsh.on('error', (error) => {
@@ -278,12 +275,12 @@ function initPersistentPwsh(): void {
   });
 
   persistentPwsh.on('exit', (code) => {
-    console.log(`[PowerShell] Process exited with code ${String(code)}`);
+    console.debug(`[PowerShell] Process exited with code ${String(code)}`);
     persistentPwsh = null;
   });
 
   const endTime = performance.now();
-  console.log(
-    `[PowerShell] Process started in ${(endTime - startTime).toFixed(0)}ms`,
+  console.debug(
+    `[PowerShell] Process started in ${(endTime - startTime).toFixed(0)}ms`
   );
 }

@@ -1,13 +1,13 @@
 import { Notice } from 'obsidian';
 import { PluginBase } from 'obsidian-dev-utils/obsidian/Plugin/PluginBase';
 
+import type { Desktop } from './DesktopManagers/WindowsDesktopManager.ts';
 import type { PluginTypes } from './PluginTypes.ts';
 
-import type { Desktop } from './DesktopManagers/WindowsDesktopManager.ts';
 import {
   cleanupPersistentPwsh,
   getVirtualDesktops,
-  switchToDesktop,
+  switchToDesktop
 } from './DesktopManagers/WindowsDesktopManager.ts';
 import { PluginSettingsManager } from './PluginSettingsManager.ts';
 import { PluginSettingsTab } from './PluginSettingsTab.ts';
@@ -43,10 +43,10 @@ export class Plugin extends PluginBase<PluginTypes> {
 
     // Register layout-change event to sync workspaces with virtual desktops
     this.registerEvent(
-      this.app.workspace.on('layout-change', this.handleLayoutChange.bind(this)),
+      this.app.workspace.on('layout-change', this.handleLayoutChange.bind(this))
     );
 
-    console.info('[Desktop Workspace Switcher] Plugin loaded, layout-change listener registered');
+    console.debug('[Desktop Workspace Switcher] Plugin loaded, layout-change listener registered');
   }
 
   protected override async onunloadImpl(): Promise<void> {
@@ -54,7 +54,7 @@ export class Plugin extends PluginBase<PluginTypes> {
 
     // Clean up the persistent PowerShell process
     cleanupPersistentPwsh();
-    console.info('[Desktop Workspace Switcher] Plugin unloaded, PowerShell process cleaned up');
+    console.debug('[Desktop Workspace Switcher] Plugin unloaded, PowerShell process cleaned up');
   }
 
   private getWorkspacePlugin(): undefined | WorkspacePluginInstance {
@@ -83,15 +83,15 @@ export class Plugin extends PluginBase<PluginTypes> {
       const virtualDesktops = await getVirtualDesktops();
       const currentDesktop = virtualDesktops?.find((d) => d.visible) ?? null;
       const fetchEndTime = performance.now();
-      console.log(
-        `[layout-change] Desktop fetch took ${(fetchEndTime - eventStartTime).toFixed(0)}ms`,
+      console.debug(
+        `[layout-change] Desktop fetch took ${(fetchEndTime - eventStartTime).toFixed(0)}ms`
       );
 
       const message = [
         ' desktop-workspace-sync layout change detected',
         `   previousWorkspace: ${this.previousWorkspace}`,
         `   activeWorkspace:   ${activeWorkspace}`,
-        `   currentDesktop:    ${String(currentDesktop)}`,
+        `   currentDesktop:    ${String(currentDesktop)}`
       ].join('\n');
 
       if (currentDesktop === null) {
@@ -101,7 +101,7 @@ export class Plugin extends PluginBase<PluginTypes> {
 
       if (virtualDesktops && activeWorkspace) {
         const workspaceExists = virtualDesktops.some(
-          (desktop) => desktop.name === activeWorkspace,
+          (desktop) => desktop.name === activeWorkspace
         );
 
         const firstDesktop = virtualDesktops[0];
@@ -111,24 +111,23 @@ export class Plugin extends PluginBase<PluginTypes> {
         // Only skip if workspace doesn't exist AND we're already on the first (default) desktop
         if (!workspaceExists && isOnFirstDesktop) {
           console.debug(
-            `Active workspace '${activeWorkspace}' not found and already on default desktop '${currentDesktop.name}', skipping switch`,
+            `Active workspace '${activeWorkspace}' not found and already on default desktop '${currentDesktop.name}', skipping switch`
           );
           return;
         }
       }
 
       if (activeWorkspace === currentDesktop.name) {
-        console.info(`workspace is already active on desktop, no switch needed.${message}`);
-      }
-      else {
-        console.info(`switching to desktop: ${activeWorkspace}${message}`);
+        console.debug(`workspace is already active on desktop, no switch needed.${message}`);
+      } else {
+        console.debug(`switching to desktop: ${activeWorkspace}${message}`);
         this.previousWorkspace = activeWorkspace;
 
         await switchToDesktop(
           activeWorkspace,
           null,
           (success: Desktop) => {
-            console.info(`Switched to desktop: ${success.name}`);
+            console.debug(`Switched to desktop: ${success.name}`);
 
             if (!this.settings.showNotices) {
               return;
@@ -137,8 +136,7 @@ export class Plugin extends PluginBase<PluginTypes> {
             // Only show notice if we actually switched to the requested workspace
             if (success.name === activeWorkspace) {
               new Notice(`Switched to desktop: ${activeWorkspace}`);
-            }
-            else {
+            } else {
               new Notice(`Switched to desktop: ${success.name} (${activeWorkspace} not found)`);
             }
           },
@@ -148,7 +146,7 @@ export class Plugin extends PluginBase<PluginTypes> {
               new Notice(`Failed to switch to desktop: ${activeWorkspace}. Error: ${error}`);
             }
           },
-          virtualDesktops, // Pass pre-fetched desktops to avoid redundant calls
+          virtualDesktops // Pass pre-fetched desktops to avoid redundant calls
         );
       }
     })().catch((error) => {

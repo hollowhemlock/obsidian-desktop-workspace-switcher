@@ -4,30 +4,14 @@ import {
   spawn
 } from 'child_process';
 
+import { Desktop } from '../Desktop.ts';
+
 // Cache for desktop list (500ms TTL to avoid excessive PowerShell spawns)
 let desktopCache: { desktops: Desktop[]; timestamp: number } | null = null;
 const CACHE_TTL_MS = 500;
 
 // Persistent PowerShell process for faster command execution
 let persistentPwsh: ChildProcess | null = null;
-
-export class Desktop {
-  public name: string;
-  public number: number;
-  public visible: boolean;
-
-  public constructor(number: number, name: string, visible: boolean) {
-    this.number = number;
-    this.name = name;
-    this.visible = visible;
-  }
-
-  public toString(): string {
-    return `Desktop ${String(this.number)}: ${this.name} ${
-      this.visible ? '(active)' : ''
-    }`;
-  }
-}
 
 // Cleanup persistent PowerShell process
 export function cleanupPersistentPwsh(): void {

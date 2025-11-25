@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import { PluginBase } from 'obsidian-dev-utils/obsidian/Plugin/PluginBase';
 
-import type { Desktop } from './DesktopManagers/WindowsDesktopManager.ts';
+import type { Desktop } from './Desktop.ts';
 import type { PluginTypes } from './PluginTypes.ts';
 
 import {

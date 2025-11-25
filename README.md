@@ -2,6 +2,20 @@
 
 This is a plugin for [Obsidian](https://obsidian.md/) that Automatically match and sync Obsidian workspaces with virtual desktops. Switch workspaces to instantly change between your virtual desktops or Spaces.
 
+## Dependencies
+
+### Windows
+
+This plugin requires the [PSVirtualDesktop PowerShell module](https://github.com/MScholtes/PSVirtualDesktop) to be installed on Windows systems.
+
+To install it, run the following command in PowerShell as Administrator:
+
+```powershell
+Install-Module VirtualDesktop
+```
+
+For more information and alternative installation methods, see the [PSVirtualDesktop documentation](https://github.com/MScholtes/PSVirtualDesktop?tab=readme-ov-file).
+
 ## Installation
 
 The plugin is not available in [the official Community Plugins repository](https://obsidian.md/plugins) yet.

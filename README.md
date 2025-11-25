@@ -16,6 +16,58 @@ Install-Module VirtualDesktop
 
 For more information and alternative installation methods, see the [PSVirtualDesktop documentation](https://github.com/MScholtes/PSVirtualDesktop?tab=readme-ov-file).
 
+### macOS
+
+This plugin requires [yabai](https://github.com/koekeishiya/yabai), a tiling window manager for macOS that provides programmatic control over Spaces (virtual desktops).
+
+#### Installation
+
+Install yabai via Homebrew:
+
+```bash
+brew install koekeishiya/formulae/yabai
+```
+
+Start the yabai service:
+
+```bash
+yabai --start-service
+```
+
+#### System Requirements
+
+- **Mission Control Setting**: In System Settings > Desktop & Dock > Mission Control, ensure "Displays have separate Spaces" is enabled.
+- **Permissions**: Grant yabai the necessary Accessibility permissions when prompted.
+
+#### System Integrity Protection (SIP)
+
+Basic space switching works without disabling SIP. However, for advanced features (like programmatic space manipulation), you may need to partially disable SIP:
+
+- **Basic features** (querying spaces, switching): Work with SIP enabled
+- **Advanced features** (creating/destroying spaces, moving windows): Require partial SIP disabling
+
+To partially disable SIP for yabai:
+
+1. Boot into Recovery Mode (hold Cmd+R during startup)
+2. Open Terminal from the Utilities menu
+3. Run the appropriate command for your Mac:
+
+**For Apple Silicon (M1/M2/M3):**
+```bash
+csrutil disable --with kext --with dtrace --with basesystem
+```
+
+**For Intel Macs:**
+```bash
+csrutil disable --with kext --with dtrace --with nvram --with basesystem
+```
+
+4. Restart your Mac
+
+For more details, see the [yabai wiki on disabling SIP](https://github.com/koekeishiya/yabai/wiki/Disabling-System-Integrity-Protection).
+
+**Note**: This plugin's core functionality (workspace-to-space synchronization) works without disabling SIP.
+
 ## Installation
 
 The plugin is not available in [the official Community Plugins repository](https://obsidian.md/plugins) yet.

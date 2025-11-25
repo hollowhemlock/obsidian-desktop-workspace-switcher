@@ -2,13 +2,10 @@ import { Notice } from 'obsidian';
 import { PluginBase } from 'obsidian-dev-utils/obsidian/Plugin/PluginBase';
 
 import type { Desktop } from './Desktop.ts';
+import type { IDesktopManager } from './DesktopManagers/IDesktopManager.ts';
 import type { PluginTypes } from './PluginTypes.ts';
 
-import {
-  cleanupPersistentPwsh,
-  getVirtualDesktops,
-  switchToDesktop
-} from './DesktopManagers/WindowsDesktopManager.ts';
+import { createDesktopManager } from './DesktopManagers/DesktopManagerFactory.ts';
 import { PluginSettingsManager } from './PluginSettingsManager.ts';
 import { PluginSettingsTab } from './PluginSettingsTab.ts';
 
@@ -19,6 +16,7 @@ interface WorkspacePluginInstance {
 
 export class Plugin extends PluginBase<PluginTypes> {
   private previousWorkspace = '';
+  private desktopManager: IDesktopManager | null = null;
 
   protected override createSettingsManager(): PluginSettingsManager {
     return new PluginSettingsManager(this);
@@ -41,6 +39,28 @@ export class Plugin extends PluginBase<PluginTypes> {
   protected override async onloadImpl(): Promise<void> {
     await super.onloadImpl();
 
+    // Initialize desktop manager
+    this.desktopManager = createDesktopManager();
+
+    if (!this.desktopManager) {
+      console.warn('[Desktop Workspace Switcher] Platform not supported or desktop manager unavailable');
+      new Notice('Desktop Workspace Switcher: Platform not supported');
+      return;
+    }
+
+    // Check if desktop manager is available
+    const isAvailable = await this.desktopManager.isAvailable();
+    if (!isAvailable) {
+      console.warn('[Desktop Workspace Switcher] Desktop manager not available (missing dependencies)');
+      const platform = process.platform;
+      if (platform === 'darwin') {
+        new Notice('Desktop Workspace Switcher: yabai not found. Please install via: brew install koekeishiya/formulae/yabai');
+      } else if (platform === 'win32') {
+        new Notice('Desktop Workspace Switcher: PSVirtualDesktop module not found. Please install via PowerShell.');
+      }
+      return;
+    }
+
     // Register layout-change event to sync workspaces with virtual desktops
     this.registerEvent(
       this.app.workspace.on('layout-change', this.handleLayoutChange.bind(this))
@@ -52,9 +72,11 @@ export class Plugin extends PluginBase<PluginTypes> {
   protected override async onunloadImpl(): Promise<void> {
     await super.onunloadImpl();
 
-    // Clean up the persistent PowerShell process
-    cleanupPersistentPwsh();
-    console.debug('[Desktop Workspace Switcher] Plugin unloaded, PowerShell process cleaned up');
+    // Clean up desktop manager resources
+    if (this.desktopManager) {
+      this.desktopManager.cleanup();
+    }
+    console.debug('[Desktop Workspace Switcher] Plugin unloaded, desktop manager cleaned up');
   }
 
   private getWorkspacePlugin(): undefined | WorkspacePluginInstance {
@@ -65,6 +87,11 @@ export class Plugin extends PluginBase<PluginTypes> {
 
   private handleLayoutChange(): void {
     if (!this.settings.enabled) {
+      return;
+    }
+
+    if (!this.desktopManager) {
+      console.warn('[Desktop Workspace Switcher] Desktop manager not initialized');
       return;
     }
 
@@ -80,7 +107,7 @@ export class Plugin extends PluginBase<PluginTypes> {
       const activeWorkspace = workspacePlugin.activeWorkspace;
 
       // Get list of virtual desktops once (optimization: avoid multiple calls)
-      const virtualDesktops = await getVirtualDesktops();
+      const virtualDesktops = await this.desktopManager!.getVirtualDesktops();
       const currentDesktop = virtualDesktops?.find((d) => d.visible) ?? null;
       const fetchEndTime = performance.now();
       console.debug(
@@ -123,7 +150,7 @@ export class Plugin extends PluginBase<PluginTypes> {
         console.debug(`switching to desktop: ${activeWorkspace}${message}`);
         this.previousWorkspace = activeWorkspace;
 
-        await switchToDesktop(
+        await this.desktopManager!.switchToDesktop(
           activeWorkspace,
           null,
           (success: Desktop) => {

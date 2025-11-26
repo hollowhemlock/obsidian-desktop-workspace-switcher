@@ -1,6 +1,6 @@
 {
   "name": "desktop-workspace-switcher",
-  "version": "0.0.0",
+  "version": "0.0.1-beta.1",
   "description": "Automatically match and sync Obsidian workspaces with virtual desktops. Switch workspaces to instantly change between your virtual desktops or Spaces.",
   "keywords": [],
   "license": "MIT",

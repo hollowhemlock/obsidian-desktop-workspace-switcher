@@ -6,6 +6,16 @@ import { Desktop } from '../Desktop.ts';
  */
 export interface IDesktopManager {
   /**
+   * Clean up any resources (persistent processes, listeners, etc.)
+   */
+  cleanup(): void;
+
+  /**
+   * Clear any cached desktop data
+   */
+  clearCache(): void;
+
+  /**
    * Get the currently active desktop/space
    * @returns The current desktop, or null if unable to determine
    */
@@ -19,6 +29,12 @@ export interface IDesktopManager {
   getVirtualDesktops(useCache?: boolean): Promise<Desktop[] | undefined>;
 
   /**
+   * Check if the desktop manager is available on this system
+   * @returns true if the manager can be used, false otherwise
+   */
+  isAvailable(): Promise<boolean>;
+
+  /**
    * Switch to a desktop/space by name
    * @param desktopOfName Primary desktop name to switch to
    * @param desktopOfNameIfNotFound Fallback desktop name if primary not found
@@ -28,25 +44,9 @@ export interface IDesktopManager {
    */
   switchToDesktop(
     desktopOfName: string,
-    desktopOfNameIfNotFound: string | null,
+    desktopOfNameIfNotFound: null | string,
     onSuccess: (desktop: Desktop) => void,
     onFailure: (error: string) => void,
     preloadedDesktops?: Desktop[]
   ): Promise<void>;
-
-  /**
-   * Check if the desktop manager is available on this system
-   * @returns true if the manager can be used, false otherwise
-   */
-  isAvailable(): Promise<boolean>;
-
-  /**
-   * Clean up any resources (persistent processes, listeners, etc.)
-   */
-  cleanup(): void;
-
-  /**
-   * Clear any cached desktop data
-   */
-  clearCache(): void;
 }

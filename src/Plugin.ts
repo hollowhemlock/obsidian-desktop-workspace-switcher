@@ -15,8 +15,8 @@ interface WorkspacePluginInstance {
 }
 
 export class Plugin extends PluginBase<PluginTypes> {
-  private previousWorkspace = '';
   private desktopManager: IDesktopManager | null = null;
+  private previousWorkspace = '';
 
   protected override createSettingsManager(): PluginSettingsManager {
     return new PluginSettingsManager(this);
@@ -132,8 +132,7 @@ export class Plugin extends PluginBase<PluginTypes> {
         );
 
         const firstDesktop = virtualDesktops[0];
-        const isOnFirstDesktop =
-          firstDesktop !== undefined && currentDesktop.name === firstDesktop.name;
+        const isOnFirstDesktop = firstDesktop !== undefined && currentDesktop.name === firstDesktop.name;
 
         // Only skip if workspace doesn't exist AND we're already on the first (default) desktop
         if (!workspaceExists && isOnFirstDesktop) {

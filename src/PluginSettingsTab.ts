@@ -8,7 +8,6 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
     super.display();
     this.containerEl.empty();
 
-    // eslint-disable-next-line import-x/no-nodejs-modules -- Required for platform detection
     const platform = process.platform;
     const isMacOS = platform === 'darwin';
     const isWindows = platform === 'win32';
@@ -27,7 +26,7 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
         this.bind(toggle, 'showNotices');
       });
 
-    // macOS-specific settings
+    // MacOS-specific settings
     if (isMacOS) {
       this.containerEl.createEl('h3', { text: 'macOS Settings' });
 
@@ -40,7 +39,8 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
 
       this.containerEl.createEl('p', {
         cls: 'setting-item-description',
-        text: 'Advanced settings (pollInterval, spaceToWorkspaceMapping) can be configured by editing the plugin\'s data.json file. Reload Obsidian after making changes.'
+        text:
+          'Advanced settings (pollInterval, spaceToWorkspaceMapping) can be configured by editing the plugin\'s data.json file. Reload Obsidian after making changes.'
       });
     }
 

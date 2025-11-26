@@ -10,8 +10,6 @@ export class Desktop {
   }
 
   public toString(): string {
-    return `Desktop ${String(this.number)}: ${this.name} ${
-      this.visible ? '(active)' : ''
-    }`;
+    return `Desktop ${String(this.number)}: ${this.name} ${this.visible ? '(active)' : ''}`;
   }
 }

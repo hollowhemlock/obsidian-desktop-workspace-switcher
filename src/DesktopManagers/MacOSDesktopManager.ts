@@ -2,9 +2,9 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-import { Desktop } from '../Desktop.ts';
-
 import type { IDesktopManager } from './IDesktopManager.ts';
+
+import { Desktop } from '../Desktop.ts';
 
 const execAsync = promisify(exec);
 
@@ -13,11 +13,20 @@ let spaceCache: { spaces: Desktop[]; timestamp: number } | null = null;
 const CACHE_TTL_MS = 500;
 
 /**
- * macOS Desktop Manager using yabai window manager
+ * MacOS Desktop Manager using yabai window manager
  * Manages Mission Control Spaces via yabai CLI
  */
 export class MacOSDesktopManager implements IDesktopManager {
   private yabaiAvailable: boolean | null = null;
+
+  public cleanup(): void {
+    // No persistent processes to clean up (unlike Windows PowerShell)
+    console.debug('[MacOSDesktopManager] Cleanup called (no-op)');
+  }
+
+  public clearCache(): void {
+    spaceCache = null;
+  }
 
   public async getCurrentDesktop(): Promise<Desktop | null> {
     const spaces = await this.getVirtualDesktops();
@@ -40,9 +49,7 @@ export class MacOSDesktopManager implements IDesktopManager {
       && Date.now() - spaceCache.timestamp < CACHE_TTL_MS
     ) {
       console.debug(
-        `[getVirtualDesktops] Using cached spaces (age: ${
-          String(Date.now() - spaceCache.timestamp)
-        }ms)`
+        `[getVirtualDesktops] Using cached spaces (age: ${String(Date.now() - spaceCache.timestamp)}ms)`
       );
       return spaceCache.spaces;
     }
@@ -52,16 +59,14 @@ export class MacOSDesktopManager implements IDesktopManager {
       const { stdout } = await execAsync('yabai -m query --spaces');
       const endTime = performance.now();
       console.debug(
-        `[getVirtualDesktops] yabai command took ${
-          (endTime - startTime).toFixed(0)
-        }ms`
+        `[getVirtualDesktops] yabai command took ${(endTime - startTime).toFixed(0)}ms`
       );
 
       interface YabaiSpace {
-        index: number;
-        label: string;
-        'is-visible': boolean;
         'has-focus': boolean;
+        'index': number;
+        'is-visible': boolean;
+        'label': string;
       }
 
       // Parse the space list JSON
@@ -87,6 +92,26 @@ export class MacOSDesktopManager implements IDesktopManager {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`Error executing yabai command: ${errorMsg}`);
       return undefined;
+    }
+  }
+
+  public async isAvailable(): Promise<boolean> {
+    // Cache the availability check
+    if (this.yabaiAvailable !== null) {
+      return this.yabaiAvailable;
+    }
+
+    try {
+      // Check if yabai is available and responsive
+      await execAsync('yabai -m query --spaces', { timeout: 2000 });
+      this.yabaiAvailable = true;
+      console.debug('[MacOSDesktopManager] yabai is available');
+      return true;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.warn(`[MacOSDesktopManager] yabai not available: ${errorMsg}`);
+      this.yabaiAvailable = false;
+      return false;
     }
   }
 
@@ -143,9 +168,7 @@ export class MacOSDesktopManager implements IDesktopManager {
         await execAsync(`yabai -m space --focus ${String(finalTarget.number)}`);
         const switchEndTime = performance.now();
         console.debug(
-          `[switchToDesktop] Switch command took ${
-            (switchEndTime - switchStartTime).toFixed(0)
-          }ms`
+          `[switchToDesktop] Switch command took ${(switchEndTime - switchStartTime).toFixed(0)}ms`
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -161,9 +184,7 @@ export class MacOSDesktopManager implements IDesktopManager {
 
       const totalEndTime = performance.now();
       console.debug(
-        `[switchToDesktop] Total operation took ${
-          (totalEndTime - totalStartTime).toFixed(0)
-        }ms`
+        `[switchToDesktop] Total operation took ${(totalEndTime - totalStartTime).toFixed(0)}ms`
       );
 
       // Switch was successful
@@ -173,34 +194,5 @@ export class MacOSDesktopManager implements IDesktopManager {
       console.error(`Error switching to space '${desktopOfName}': ${errorMsg}`);
       onFailure(`Error switching to space '${desktopOfName}': ${errorMsg}`);
     }
-  }
-
-  public async isAvailable(): Promise<boolean> {
-    // Cache the availability check
-    if (this.yabaiAvailable !== null) {
-      return this.yabaiAvailable;
-    }
-
-    try {
-      // Check if yabai is available and responsive
-      await execAsync('yabai -m query --spaces', { timeout: 2000 });
-      this.yabaiAvailable = true;
-      console.debug('[MacOSDesktopManager] yabai is available');
-      return true;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.warn(`[MacOSDesktopManager] yabai not available: ${errorMsg}`);
-      this.yabaiAvailable = false;
-      return false;
-    }
-  }
-
-  public cleanup(): void {
-    // No persistent processes to clean up (unlike Windows PowerShell)
-    console.debug('[MacOSDesktopManager] Cleanup called (no-op)');
-  }
-
-  public clearCache(): void {
-    spaceCache = null;
   }
 }

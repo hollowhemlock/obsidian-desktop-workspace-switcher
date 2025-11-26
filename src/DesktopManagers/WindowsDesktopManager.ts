@@ -4,9 +4,9 @@ import {
   spawn
 } from 'child_process';
 
-import { Desktop } from '../Desktop.ts';
-
 import type { IDesktopManager } from './IDesktopManager.ts';
+
+import { Desktop } from '../Desktop.ts';
 
 // Cache for desktop list (500ms TTL to avoid excessive PowerShell spawns)
 let desktopCache: { desktops: Desktop[]; timestamp: number } | null = null;
@@ -20,6 +20,18 @@ let persistentPwsh: ChildProcess | null = null;
  * Manages Windows virtual desktops via persistent PowerShell process
  */
 export class WindowsDesktopManager implements IDesktopManager {
+  public cleanup(): void {
+    if (persistentPwsh) {
+      console.debug('[PowerShell] Cleaning up persistent process...');
+      persistentPwsh.kill();
+      persistentPwsh = null;
+    }
+  }
+
+  public clearCache(): void {
+    desktopCache = null;
+  }
+
   public async getCurrentDesktop(): Promise<Desktop | null> {
     const desktops = await this.getVirtualDesktops();
     if (desktops) {
@@ -41,9 +53,7 @@ export class WindowsDesktopManager implements IDesktopManager {
       && Date.now() - desktopCache.timestamp < CACHE_TTL_MS
     ) {
       console.debug(
-        `[getVirtualDesktops] Using cached desktops (age: ${
-          String(Date.now() - desktopCache.timestamp)
-        }ms)`
+        `[getVirtualDesktops] Using cached desktops (age: ${String(Date.now() - desktopCache.timestamp)}ms)`
       );
       return desktopCache.desktops;
     }
@@ -55,9 +65,7 @@ export class WindowsDesktopManager implements IDesktopManager {
       );
       const endTime = performance.now();
       console.debug(
-        `[getVirtualDesktops] PowerShell command took ${
-          (endTime - startTime).toFixed(0)
-        }ms`
+        `[getVirtualDesktops] PowerShell command took ${(endTime - startTime).toFixed(0)}ms`
       );
 
       interface RawDesktop {
@@ -71,8 +79,7 @@ export class WindowsDesktopManager implements IDesktopManager {
 
       // Create Desktop instances
       const desktopData: Desktop[] = desktops.map(
-        (desktop: RawDesktop) =>
-          new Desktop(desktop.Number, desktop.Name, desktop.Visible)
+        (desktop: RawDesktop) => new Desktop(desktop.Number, desktop.Name, desktop.Visible)
       );
 
       // Update cache - using a separate variable to avoid race condition
@@ -85,6 +92,16 @@ export class WindowsDesktopManager implements IDesktopManager {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`Error executing PowerShell command: ${errorMsg}`);
       return undefined;
+    }
+  }
+
+  public async isAvailable(): Promise<boolean> {
+    try {
+      // Check if PowerShell and PSVirtualDesktop module are available
+      const desktops = await this.getVirtualDesktops(false);
+      return desktops !== undefined && desktops.length > 0;
+    } catch {
+      return false;
     }
   }
 
@@ -141,9 +158,7 @@ export class WindowsDesktopManager implements IDesktopManager {
         await execViaPersistentPwsh(`Switch-Desktop '${finalTarget.name}'`);
         const switchEndTime = performance.now();
         console.debug(
-          `[switchToDesktop] Switch command took ${
-            (switchEndTime - switchStartTime).toFixed(0)
-          }ms`
+          `[switchToDesktop] Switch command took ${(switchEndTime - switchStartTime).toFixed(0)}ms`
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -159,9 +174,7 @@ export class WindowsDesktopManager implements IDesktopManager {
 
       const totalEndTime = performance.now();
       console.debug(
-        `[switchToDesktop] Total operation took ${
-          (totalEndTime - totalStartTime).toFixed(0)
-        }ms`
+        `[switchToDesktop] Total operation took ${(totalEndTime - totalStartTime).toFixed(0)}ms`
       );
 
       // Switch was successful, return the target desktop (optimization: avoid extra fetch)
@@ -171,28 +184,6 @@ export class WindowsDesktopManager implements IDesktopManager {
       console.error(`Error switching to desktop '${desktopOfName}': ${errorMsg}`);
       onFailure(`Error switching to desktop '${desktopOfName}': ${errorMsg}`);
     }
-  }
-
-  public async isAvailable(): Promise<boolean> {
-    try {
-      // Check if PowerShell and PSVirtualDesktop module are available
-      const desktops = await this.getVirtualDesktops(false);
-      return desktops !== undefined && desktops.length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  public cleanup(): void {
-    if (persistentPwsh) {
-      console.debug('[PowerShell] Cleaning up persistent process...');
-      persistentPwsh.kill();
-      persistentPwsh = null;
-    }
-  }
-
-  public clearCache(): void {
-    desktopCache = null;
   }
 }
 
@@ -212,8 +203,7 @@ async function execViaPersistentPwsh(command: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     const marker = `__END_${String(Date.now())}__`;
-    const wrappedCommand =
-      `try { ${command}; Write-Output '${marker}' } catch { Write-Error $_ }`;
+    const wrappedCommand = `try { ${command}; Write-Output '${marker}' } catch { Write-Error $_ }`;
 
     let output = '';
     let errorOutput = '';

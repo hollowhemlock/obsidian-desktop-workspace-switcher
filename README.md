@@ -20,7 +20,7 @@ For more information and alternative installation methods, see the [PSVirtualDes
 
 This plugin requires [yabai](https://github.com/koekeishiya/yabai), a tiling window manager for macOS that provides programmatic control over Spaces (virtual desktops).
 
-#### Installation
+#### Installing yabai
 
 Install yabai via Homebrew:
 
@@ -53,16 +53,18 @@ To partially disable SIP for yabai:
 3. Run the appropriate command for your Mac:
 
 **For Apple Silicon (M1/M2/M3):**
+
 ```bash
 csrutil disable --with kext --with dtrace --with basesystem
 ```
 
 **For Intel Macs:**
+
 ```bash
 csrutil disable --with kext --with dtrace --with nvram --with basesystem
 ```
 
-4. Restart your Mac
+1. Restart your Mac
 
 For more details, see the [yabai wiki on disabling SIP](https://github.com/koekeishiya/yabai/wiki/Disabling-System-Integrity-Protection).
 

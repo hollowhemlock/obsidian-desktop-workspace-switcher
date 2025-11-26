@@ -29,33 +29,41 @@ The compiled `main.js` is not committed—it's uploaded to GitHub releases.
 ## Code Architecture
 
 ### Entry Points
+
 - `src/main.ts` - Plugin entry point, exports the Plugin class
 - `src/Plugin.ts` - Main plugin class extending `PluginBase<PluginTypes>`, handles all registrations (commands, events, views)
 
 ### Type System
+
 - `src/PluginTypes.ts` - Central interface defining plugin/settings/tab relationships
 
 ### Settings
+
 - `src/PluginSettings.ts` - Settings data class with 20+ setting type examples
 - `src/PluginSettingsManager.ts` - Settings persistence with custom serialization
 - `src/PluginSettingsTab.ts` - Settings UI using `SettingEx` components and `this.bind()` pattern
 
 ### Views (src/Views/)
+
 - `SampleView.ts` - Basic ItemView
 - `SampleSvelteView.ts` - Svelte component integration
 - `SampleReactView.tsx` - React component integration
 
 ### Editor Extensions (src/EditorExtensions/)
+
 CodeMirror 6 extensions: state fields, view plugins, widgets
 
 ### Desktop Switching Logic (codeToImport/)
+
 **Not yet integrated into main plugin:**
+
 - `windows-desktop-manager.ts` - PowerShell-based Windows virtual desktop control with caching (500ms TTL)
 - `register-desktop-switcher-event.ts` - Workspace change event handling and desktop sync logic
 
 ## Key Patterns
 
 ### Settings Binding
+
 ```typescript
 new SettingEx(this.containerEl)
   .setName('Setting Name')
@@ -65,11 +73,13 @@ new SettingEx(this.containerEl)
 ```
 
 ### Event Registration
+
 ```typescript
 this.registerEvent(this.app.workspace.on('layout-change', handler));
 ```
 
 ### Desktop Switching (from codeToImport)
+
 - Name-based matching: workspace name must match desktop name
 - Falls back to first desktop if no match found
 - Uses persistent PowerShell process for performance
@@ -77,6 +87,7 @@ this.registerEvent(this.app.workspace.on('layout-change', handler));
 ## Debugging
 
 Enable debug logging in DevTools Console:
+
 ```javascript
 window.DEBUG.enable('desktop-workspace-switcher');
 ```

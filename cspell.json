@@ -8,8 +8,17 @@
   "dictionaryDefinitions": [],
   "dictionaries": [],
   "words": [
+    "basesystem",
+    "csrutil",
     "dblclick",
-    "tsbuildinfo"
+    "dtrace",
+    "hollowhemlock",
+    "kext",
+    "koekeishiya",
+    "nvram",
+    "tsbuildinfo",
+    "yabai",
+    "Yabai"
   ],
   "ignoreWords": [],
   "import": [],

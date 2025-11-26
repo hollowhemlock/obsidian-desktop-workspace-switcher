@@ -44,7 +44,7 @@ export class Plugin extends PluginBase<PluginTypes> {
 
     if (!this.desktopManager) {
       console.warn('[Desktop Workspace Switcher] Platform not supported or desktop manager unavailable');
-      new Notice('Desktop Workspace Switcher: Platform not supported');
+      new Notice('Desktop workspace switcher: platform not supported');
       return;
     }
 
@@ -54,9 +54,9 @@ export class Plugin extends PluginBase<PluginTypes> {
       console.warn('[Desktop Workspace Switcher] Desktop manager not available (missing dependencies)');
       const platform = process.platform;
       if (platform === 'darwin') {
-        new Notice('Desktop Workspace Switcher: yabai not found. Please install via: brew install koekeishiya/formulae/yabai');
+        new Notice('Desktop workspace switcher: yabai not found. Please install via: brew install koekeishiya/formulae/yabai');
       } else if (platform === 'win32') {
-        new Notice('Desktop Workspace Switcher: PSVirtualDesktop module not found. Please install via PowerShell.');
+        new Notice('Desktop workspace switcher: psvirtualdesktop module not found. Please install via powershell.');
       }
       return;
     }
@@ -106,8 +106,13 @@ export class Plugin extends PluginBase<PluginTypes> {
 
       const activeWorkspace = workspacePlugin.activeWorkspace;
 
+      if (!this.desktopManager) {
+        console.error('[Desktop Workspace Switcher] Desktop manager unexpectedly undefined');
+        return;
+      }
+
       // Get list of virtual desktops once (optimization: avoid multiple calls)
-      const virtualDesktops = await this.desktopManager!.getVirtualDesktops();
+      const virtualDesktops = await this.desktopManager.getVirtualDesktops();
       const currentDesktop = virtualDesktops?.find((d) => d.visible) ?? null;
       const fetchEndTime = performance.now();
       console.debug(
@@ -149,7 +154,7 @@ export class Plugin extends PluginBase<PluginTypes> {
         console.debug(`switching to desktop: ${activeWorkspace}${message}`);
         this.previousWorkspace = activeWorkspace;
 
-        await this.desktopManager!.switchToDesktop(
+        await this.desktopManager.switchToDesktop(
           activeWorkspace,
           null,
           (success: Desktop) => {

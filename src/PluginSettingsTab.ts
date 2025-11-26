@@ -28,11 +28,11 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
 
     // MacOS-specific settings
     if (isMacOS) {
-      this.containerEl.createEl('h3', { text: 'macOS Settings' });
+      this.containerEl.createEl('h3', { text: 'macOS settings' });
 
       new SettingEx(this.containerEl)
         .setName('Enable macOS sync')
-        .setDesc('Enable synchronization with macOS Spaces (requires yabai).')
+        .setDesc('Enable synchronization with macOS spaces (requires yabai).')
         .addToggle((toggle) => {
           this.bind(toggle, 'enableMacOSSync');
         });
@@ -40,21 +40,21 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
       this.containerEl.createEl('p', {
         cls: 'setting-item-description',
         text:
-          'Advanced settings (pollInterval, spaceToWorkspaceMapping) can be configured by editing the plugin\'s data.json file. Reload Obsidian after making changes.'
+          'Advanced settings (poll interval, space to workspace mapping) can be configured by editing the plugin\'s data.json file. Reload Obsidian after making changes.'
       });
     }
 
     // Platform info
-    this.containerEl.createEl('h3', { text: 'Platform Information' });
+    this.containerEl.createEl('h3', { text: 'Platform information' });
     const platformInfo = this.containerEl.createEl('div', { cls: 'setting-item-description' });
     platformInfo.createEl('p', { text: `Current platform: ${platform}` });
 
     if (isWindows) {
       platformInfo.createEl('p', {
-        text: 'Requires: PSVirtualDesktop PowerShell module'
+        text: 'Requires: psvirtualdesktop powershell module'
       });
       platformInfo.createEl('p', {
-        text: 'Install: Install-Module VirtualDesktop (in PowerShell as Administrator)'
+        text: 'Install: install-module virtualdesktop (in powershell as administrator)'
       });
     } else if (isMacOS) {
       platformInfo.createEl('p', { text: 'Requires: yabai window manager' });
@@ -62,7 +62,7 @@ export class PluginSettingsTab extends PluginSettingsTabBase<PluginTypes> {
         text: 'Install: brew install koekeishiya/formulae/yabai && yabai --start-service'
       });
       platformInfo.createEl('p', {
-        text: 'Note: Advanced features require partial SIP disabling. See README for details.'
+        text: 'Note: advanced features require partial system integrity protection disabling. See readme for details.'
       });
     }
   }

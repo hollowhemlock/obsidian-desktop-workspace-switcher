@@ -1,5 +1,6 @@
 // eslint-disable-next-line import-x/no-nodejs-modules -- Required for executing yabai commands
 import { exec } from 'child_process';
+// eslint-disable-next-line import-x/no-nodejs-modules -- Required for promisifying Node.js exec
 import { promisify } from 'util';
 
 import type { IDesktopManager } from './IDesktopManager.ts';
@@ -102,8 +103,9 @@ export class MacOSDesktopManager implements IDesktopManager {
     }
 
     try {
+      const TIMEOUT_MS = 2000;
       // Check if yabai is available and responsive
-      await execAsync('yabai -m query --spaces', { timeout: 2000 });
+      await execAsync('yabai -m query --spaces', { timeout: TIMEOUT_MS });
       this.yabaiAvailable = true;
       console.debug('[MacOSDesktopManager] yabai is available');
       return true;

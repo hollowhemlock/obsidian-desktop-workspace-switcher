@@ -1,3 +1,5 @@
+const DEFAULT_POLL_INTERVAL_MS = 500;
+
 export class PluginSettings {
   /** Enable or disable workspace-to-desktop synchronization */
   public enabled = true;
@@ -12,7 +14,7 @@ export class PluginSettings {
    * Poll interval in milliseconds for detecting space changes (macOS only)
    * Default: 500ms
    */
-  public pollInterval = 500;
+  public pollInterval = DEFAULT_POLL_INTERVAL_MS;
 
   /** Show notices when switching desktops */
   public showNotices = true;

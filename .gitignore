@@ -27,3 +27,5 @@ dist
 
 # local settings
 settings.local.json
+test-vault/.obsidian/plugins/desktop-workspace-switcher/.hotreload
+test-vault/.obsidian/plugins/desktop-workspace-switcher/manifest.json
